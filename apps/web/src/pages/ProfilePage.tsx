@@ -23,8 +23,8 @@ export function ProfilePage() {
   const { request } = useApi();
   const queryClient = useQueryClient();
 
-  const [email, setEmail] = useState(user.email);
-  const [displayName, setDisplayName] = useState(user.displayName ?? "");
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -51,15 +51,20 @@ export function ProfilePage() {
   });
 
   useEffect(() => {
+    if (!user) return;
     setEmail(user.email);
     setDisplayName(user.displayName ?? "");
-  }, [user.email, user.displayName]);
+  }, [user]);
 
   useEffect(() => {
     if (!meQuery.data) return;
     setNotifyTriage(meQuery.data.notifyEmailTriage);
     setNotifyDigest(meQuery.data.notifyEmailDigest);
   }, [meQuery.data]);
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="app-page">

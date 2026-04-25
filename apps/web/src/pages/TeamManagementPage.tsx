@@ -78,9 +78,6 @@ export function TeamManagementPage() {
   const [addTargetTeam, setAddTargetTeam] = useState<DevTeam>("backend");
   const [addSearch, setAddSearch] = useState("");
 
-  const rosterSearchFilterCount = (rosterSearch.trim() ? 1 : 0) as number;
-  const rosterSearchLegendId = `${baseId}-roster-filters-legend`;
-
   const listQuery = useQuery({
     queryKey: ["team-memberships"],
     queryFn: async () => {
@@ -226,25 +223,46 @@ export function TeamManagementPage() {
       {developersQuery.isError && <p role="alert">Could not load roster.</p>}
 
       <section className="tm-toolbar card" aria-label="Roster search">
-        <div className="card__head" style={{ marginTop: 0 }}>
-          <h2 className="card__title">Search the roster</h2>
-          <p className="card__sub">
-            Type a name or a skill. Every team list below updates so you can quickly find who sits
-            where.
-          </p>
-        </div>
-        <div className="field" style={{ marginBottom: 0, maxWidth: "28rem" }}>
-          <label htmlFor={`${baseId}-roster`}>Find someone</label>
-          <input
-            id={`${baseId}-roster`}
-            type="search"
-            value={rosterSearch}
-            onChange={(e) => setRosterSearch(e.target.value)}
-            placeholder="e.g. React or Sam"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </div>
+        <details className="app-filters-disclosure">
+          <summary className="app-filters-disclosure__summary">
+            <span className="app-filters-disclosure__summary-left">
+              <span className="app-filters-disclosure__summary-title" id={`${baseId}-roster-filters-legend`}>
+                Search the roster
+              </span>
+              {rosterSearch.trim() ? (
+                <span
+                  className="app-filters-disclosure__summary-badge"
+                  aria-label="Search text is active"
+                >
+                  1 active
+                </span>
+              ) : null}
+            </span>
+          </summary>
+          <div
+            className="app-filters-disclosure__panel"
+            role="search"
+            aria-label="Roster search"
+            aria-labelledby={`${baseId}-roster-filters-legend`}
+          >
+            <p className="card__sub" style={{ margin: 0 }}>
+              Type a name or a skill. Every team list below updates so you can quickly find who sits
+              where.
+            </p>
+            <div className="field" style={{ marginBottom: 0, maxWidth: "28rem" }}>
+              <label htmlFor={`${baseId}-roster`}>Find someone</label>
+              <input
+                id={`${baseId}-roster`}
+                type="search"
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                placeholder="e.g. React or Sam"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+        </details>
       </section>
 
       {listQuery.isLoading ? (
