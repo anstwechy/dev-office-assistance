@@ -78,6 +78,9 @@ export function TeamManagementPage() {
   const [addTargetTeam, setAddTargetTeam] = useState<DevTeam>("backend");
   const [addSearch, setAddSearch] = useState("");
 
+  const rosterSearchFilterCount = (rosterSearch.trim() ? 1 : 0) as number;
+  const rosterSearchLegendId = `${baseId}-roster-filters-legend`;
+
   const listQuery = useQuery({
     queryKey: ["team-memberships"],
     queryFn: async () => {

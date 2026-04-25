@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-hidden="true">
-  <rect width="512" height="512" rx="112" fill="#dc2626"/>
-  <rect x="128" y="128" width="256" height="64" rx="12" fill="#fff" opacity="0.95"/>
-  <rect x="128" y="224" width="200" height="64" rx="12" fill="#fff" opacity="0.95"/>
-  <rect x="128" y="320" width="256" height="64" rx="12" fill="#fff" opacity="0.95"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cairn">
+  <rect width="512" height="512" rx="112" fill="#0f766e"/>
+  <g fill="#fff">
+    <rect x="48" y="320" width="416" height="80" rx="24" opacity="0.95"/>
+    <rect x="80" y="192" width="352" height="80" rx="24" opacity="0.9"/>
+    <rect x="112" y="80" width="288" height="80" rx="24"/>
+  </g>
 </svg>

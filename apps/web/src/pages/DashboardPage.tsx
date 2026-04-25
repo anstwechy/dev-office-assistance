@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import type { DashboardOverviewDto, TriageItemDto } from "@office/types";
+import type { DashboardOverviewDto, TriageItemDto, TriageSummaryDto } from "@office/types";
 import { DEV_TEAMS } from "@office/types";
 import { DEV_TEAM_LABELS } from "../constants/teams";
 import { useApi } from "../useApi";
 import { PageHeader } from "../components/PageHeader";
+import { AssigneeWorkloadBlock } from "../components/dashboard/AssigneeWorkloadBlock";
 import {
   MetricStripSkeleton,
   ProfileLineSkeleton,
@@ -40,6 +41,11 @@ export function DashboardPage() {
   const [category, setCategory] = useState("");
   const [assignee, setAssignee] = useState("");
   const [preset, setPreset] = useState<"" | "overdue" | "thisWeek">("");
+
+  const activeFilterCount = useMemo(
+    () => [preset, status, category, assignee].filter(Boolean).length,
+    [preset, status, category, assignee],
+  );
 
   const listUrl = useMemo(() => {
     const p = new URLSearchParams();
@@ -288,19 +294,10 @@ export function DashboardPage() {
                 </p>
               </div>
               <div className="snapshot-block snapshot-block--dashboard snapshot-block--wide">
-                <h3 className="snapshot-block__title">Assignee load</h3>
-                <div className="workload-pills" style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                  {overviewQuery.data.workload.rows.map((w) => (
-                    <span
-                      key={w.developerId}
-                      className="badge"
-                      title={`In progress: ${w.inProgress}`}
-                      style={{ maxWidth: "100%" }}
-                    >
-                      {w.displayName}: {w.open} open, {w.inProgress} in progress
-                    </span>
-                  ))}
-                </div>
+                <h3 className="snapshot-block__title">
+                  <Link to="/developers">Assignee load</Link>
+                </h3>
+                <AssigneeWorkloadBlock rows={overviewQuery.data.workload.rows} />
               </div>
               <div className="snapshot-block snapshot-block--dashboard snapshot-block--wide">
                 <h3 className="snapshot-block__title">
@@ -344,79 +341,98 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="dashboard-triage-filters" role="search" aria-label="Triage filters">
-          <div className="toolbar dashboard-toolbar--presets">
-            <span className="dashboard-filter-label" id="dash-presets-lbl">
-              Quick
+        <details className="dashboard-triage-filters-wrap">
+          <summary className="dashboard-triage-filters__summary">
+            <span className="dashboard-triage-filters__summary-left">
+              <span className="dashboard-triage-filters__summary-title" id="triage-filters-legend">
+                Triage filters
+              </span>
+              {activeFilterCount > 0 && (
+                <span className="dashboard-triage-filters__summary-badge" aria-label={`${activeFilterCount} filter(s) active`}>
+                  {activeFilterCount} active
+                </span>
+              )}
             </span>
-            <button
-              type="button"
-              className={preset === "overdue" ? "primary" : undefined}
-              aria-pressed={preset === "overdue"}
-              onClick={() => setPreset((p) => (p === "overdue" ? "" : "overdue"))}
-            >
-              Overdue
-            </button>
-            <button
-              type="button"
-              className={preset === "thisWeek" ? "primary" : undefined}
-              aria-pressed={preset === "thisWeek"}
-              onClick={() => setPreset((p) => (p === "thisWeek" ? "" : "thisWeek"))}
-            >
-              Due this week
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPreset("");
-                setStatus("");
-                setCategory("");
-                setAssignee("");
-              }}
-            >
-              Clear
-            </button>
-          </div>
-          <div className="dashboard-toolbar--fields">
-            <div className="dashboard-field">
-              <label htmlFor="f-status">Status</label>
-              <select id="f-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">Any</option>
-                <option value="inbox">inbox</option>
-                <option value="in_progress">in_progress</option>
-                <option value="snoozed">snoozed</option>
-                <option value="done">done</option>
-                <option value="dropped">dropped</option>
-              </select>
-            </div>
-            <div className="dashboard-field">
-              <label htmlFor="f-cat">Category</label>
-              <select id="f-cat" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="">Any</option>
-                <option value="blocker">blocker</option>
-                <option value="risk">risk</option>
-                <option value="quality">quality</option>
-                <option value="process">process</option>
-                <option value="other">other</option>
-              </select>
-            </div>
-            <div className="dashboard-field">
-              <label htmlFor="f-assignee">Assignee</label>
-              <select
-                id="f-assignee"
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
+          </summary>
+          <div
+            className="dashboard-triage-filters"
+            role="search"
+            aria-label="Triage filters"
+            aria-labelledby="triage-filters-legend"
+          >
+            <div className="toolbar dashboard-toolbar--presets">
+              <span className="dashboard-filter-label" id="dash-presets-lbl">
+                Quick
+              </span>
+              <button
+                type="button"
+                className={preset === "overdue" ? "primary" : undefined}
+                aria-pressed={preset === "overdue"}
+                onClick={() => setPreset((p) => (p === "overdue" ? "" : "overdue"))}
               >
-                <option value="">Any</option>
-                {developers.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.displayName || d.id}
-                  </option>
-                ))}
-              </select>
+                Overdue
+              </button>
+              <button
+                type="button"
+                className={preset === "thisWeek" ? "primary" : undefined}
+                aria-pressed={preset === "thisWeek"}
+                onClick={() => setPreset((p) => (p === "thisWeek" ? "" : "thisWeek"))}
+              >
+                Due this week
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreset("");
+                  setStatus("");
+                  setCategory("");
+                  setAssignee("");
+                }}
+              >
+                Clear
+              </button>
+            </div>
+            <div className="dashboard-toolbar--fields">
+              <div className="dashboard-field">
+                <label htmlFor="f-status">Status</label>
+                <select id="f-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                  <option value="">Any</option>
+                  <option value="inbox">inbox</option>
+                  <option value="in_progress">in_progress</option>
+                  <option value="snoozed">snoozed</option>
+                  <option value="done">done</option>
+                  <option value="dropped">dropped</option>
+                </select>
+              </div>
+              <div className="dashboard-field">
+                <label htmlFor="f-cat">Category</label>
+                <select id="f-cat" value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="">Any</option>
+                  <option value="blocker">blocker</option>
+                  <option value="risk">risk</option>
+                  <option value="quality">quality</option>
+                  <option value="process">process</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+              <div className="dashboard-field">
+                <label htmlFor="f-assignee">Assignee</label>
+                <select
+                  id="f-assignee"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  {developers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.displayName || d.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        </details>
 
         {itemsQuery.isLoading && (
           <DataTableSkeleton

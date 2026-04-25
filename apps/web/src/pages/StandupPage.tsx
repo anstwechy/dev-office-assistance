@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { StandupCheckInDto, StandupWeekResponseDto } from "@office/types";
 import { Textarea, SimpleGrid, Paper, Text, Badge } from "@mantine/core";
@@ -14,6 +14,7 @@ export function StandupPage() {
   const { user } = useAuth();
   const { request } = useApi();
   const qc = useQueryClient();
+  const weekFilterLegendId = useId();
 
   const [weekParam, setWeekParam] = useState<string>("");
   const weekQueryUrl = useMemo(() => {
@@ -78,7 +79,30 @@ export function StandupPage() {
         eyebrow="Ops"
         title="Leadership check-in"
         lead="A lightweight weekly sync for the two account holders: what moved, what is next, and what is blocked. It does not replace your triage queue."
-        actions={
+      />
+
+      <details className="app-filters-disclosure app-filters-disclosure--standup-week">
+        <summary className="app-filters-disclosure__summary">
+          <span className="app-filters-disclosure__summary-left">
+            <span className="app-filters-disclosure__summary-title" id={weekFilterLegendId}>
+              Week
+            </span>
+            {weekParam ? (
+              <span
+                className="app-filters-disclosure__summary-badge"
+                aria-label="A specific week is selected"
+              >
+                1 active
+              </span>
+            ) : null}
+          </span>
+        </summary>
+        <div
+          className="app-filters-disclosure__panel"
+          role="group"
+          aria-label="Week selection"
+          aria-labelledby={weekFilterLegendId}
+        >
           <div className="toolbar" style={{ alignItems: "center", flexWrap: "wrap", margin: 0 }}>
             <div className="field" style={{ minWidth: 200, marginBottom: 0 }}>
               <label htmlFor="standup-week">Week start (optional)</label>
@@ -96,8 +120,8 @@ export function StandupPage() {
               </button>
             )}
           </div>
-        }
-      />
+        </div>
+      </details>
 
       {listQuery.isLoading && <p className="muted">Loading check-ins…</p>}
       {listQuery.isError && (

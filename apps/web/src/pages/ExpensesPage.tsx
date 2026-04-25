@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useDisclosure } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ export function ExpensesPage() {
   const now = useMemo(() => new Date(), []);
   const [from, setFrom] = useState(monthStartIso(now));
   const [to, setTo] = useState(monthEndIso(now));
+  const expenseRangeLegendId = useId();
 
   const listQuery = useQuery({
     queryKey: ["expenses", from, to],
@@ -107,21 +108,37 @@ export function ExpensesPage() {
           <h2 className="card__title">Summary (selected range)</h2>
           <p className="card__sub">Totals by department for the date window below.</p>
         </div>
-        <div className="toolbar" style={{ alignItems: "flex-end" }}>
-          <div>
-            <label htmlFor="e-from">From</label>
-            <input
-              id="e-from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+        <details className="app-filters-disclosure" style={{ marginTop: "0.5rem" }}>
+          <summary className="app-filters-disclosure__summary">
+            <span className="app-filters-disclosure__summary-left">
+              <span className="app-filters-disclosure__summary-title" id={expenseRangeLegendId}>
+                Date range
+              </span>
+            </span>
+          </summary>
+          <div
+            className="app-filters-disclosure__panel"
+            role="group"
+            aria-label="Expense date range"
+            aria-labelledby={expenseRangeLegendId}
+          >
+            <div className="toolbar" style={{ alignItems: "flex-end" }}>
+              <div>
+                <label htmlFor="e-from">From</label>
+                <input
+                  id="e-from"
+                  type="date"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="e-to">To</label>
+                <input id="e-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              </div>
+            </div>
           </div>
-          <div>
-            <label htmlFor="e-to">To</label>
-            <input id="e-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-        </div>
+        </details>
         {summaryQuery.isLoading && (
           <MetricStripSkeleton count={4} style={{ marginTop: "0.75rem" }} label="Loading expense summary" />
         )}

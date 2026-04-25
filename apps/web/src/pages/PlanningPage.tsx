@@ -46,6 +46,12 @@ export function PlanningPage() {
     return items.filter((i) => (i.department?.trim() || "") === want);
   }, [items, departmentFilter]);
 
+  const activeFilterCount = useMemo(
+    () => [statusFilter, departmentFilter].filter(Boolean).length,
+    [statusFilter, departmentFilter],
+  );
+  const planningFiltersLegendId = useId();
+
   const filteredForTable = useMemo(() => {
     if (!statusFilter) return itemsAfterDepartment;
     return itemsAfterDepartment.filter((i) => i.status === statusFilter);
@@ -152,71 +158,92 @@ export function PlanningPage() {
       </div>
 
       <section className="card">
-        <div className="card__head">
-          <h2 className="card__title">View &amp; filter</h2>
-        </div>
-        <div className="toolbar" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div className="planning-view-toggle" role="group" aria-label="Planning view">
-            <button
-              type="button"
-              aria-pressed={viewMode === "board"}
-              onClick={() => setViewMode("board")}
-            >
-              Board
-            </button>
-            <button
-              type="button"
-              aria-pressed={viewMode === "table"}
-              onClick={() => setViewMode("table")}
-            >
-              Table
-            </button>
+        <details className="app-filters-disclosure">
+          <summary className="app-filters-disclosure__summary">
+            <span className="app-filters-disclosure__summary-left">
+              <span className="app-filters-disclosure__summary-title" id={planningFiltersLegendId}>
+                View &amp; filter
+              </span>
+              {activeFilterCount > 0 && (
+                <span
+                  className="app-filters-disclosure__summary-badge"
+                  aria-label={`${activeFilterCount} filter(s) active`}
+                >
+                  {activeFilterCount} active
+                </span>
+              )}
+            </span>
+          </summary>
+          <div
+            className="app-filters-disclosure__panel"
+            role="search"
+            aria-label="Planning filters"
+            aria-labelledby={planningFiltersLegendId}
+          >
+            <div className="toolbar" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+              <div className="planning-view-toggle" role="group" aria-label="Planning view">
+                <button
+                  type="button"
+                  aria-pressed={viewMode === "board"}
+                  onClick={() => setViewMode("board")}
+                >
+                  Board
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={viewMode === "table"}
+                  onClick={() => setViewMode("table")}
+                >
+                  Table
+                </button>
+              </div>
+              <div className="field" style={{ maxWidth: "16rem", marginBottom: 0 }}>
+                <label htmlFor="pf">Status filter</label>
+                <select
+                  id="pf"
+                  value={statusFilter}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setStatusFilter(v === "" ? "" : (v as PlanningStatus));
+                  }}
+                >
+                  <option value="">All statuses</option>
+                  {PLANNING_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {PLANNING_STATUS_LABEL[s]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field" style={{ maxWidth: "16rem", marginBottom: 0 }}>
+                <label htmlFor="pdept">Area filter</label>
+                <select
+                  id="pdept"
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                >
+                  <option value="">All areas</option>
+                  {DEV_DEPARTMENT_SUGGESTIONS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {statusFilter || departmentFilter ? (
+              <p className="preview-line" style={{ marginTop: 0, marginBottom: 0 }}>
+                {[
+                  statusFilter && `status: ${PLANNING_STATUS_LABEL[statusFilter]}`,
+                  departmentFilter && `area: ${departmentFilter}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                . Clear the filters to see the full list.
+              </p>
+            ) : null}
           </div>
-          <div className="field" style={{ maxWidth: "16rem", marginBottom: 0 }}>
-            <label htmlFor="pf">Status filter</label>
-            <select
-              id="pf"
-              value={statusFilter}
-              onChange={(e) => {
-                const v = e.target.value;
-                setStatusFilter(v === "" ? "" : (v as PlanningStatus));
-              }}
-            >
-              <option value="">All statuses</option>
-              {PLANNING_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {PLANNING_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field" style={{ maxWidth: "16rem", marginBottom: 0 }}>
-            <label htmlFor="pdept">Area filter</label>
-            <select
-              id="pdept"
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-            >
-              <option value="">All areas</option>
-              {DEV_DEPARTMENT_SUGGESTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {statusFilter || departmentFilter ? (
-          <p className="preview-line" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-            {[
-              statusFilter && `status: ${PLANNING_STATUS_LABEL[statusFilter]}`,
-              departmentFilter && `area: ${departmentFilter}`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-            . Clear the filters to see the full list.
-          </p>
-        ) : null}
+        </details>
         <div className="form-actions" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
           <button type="button" className="primary" onClick={openCreateInitiative}>
             Add initiative
