@@ -1,0 +1,81 @@
+# Hot reload: Vite (frontend) + tsx --watch (API). Binds your repo into the containers.
+# Usage: docker compose -f docker-compose.dev.yml --env-file .env up --build
+#   UI: http://localhost:5173   API: http://localhost:4000
+# API: migrate → prisma generate → db:seed (roster when Developer is empty) → dev.
+# Rebuild the image when package.json or lockfile changes. Restart api after Prisma schema edits.
+# Alternative (often faster): `docker compose up -d postgres` then `npm run dev` on the host.
+
+x-dev-build: &dev_build
+  context: .
+  dockerfile: docker/Dockerfile.dev
+  args:
+    NPM_STRICT_SSL: ${NPM_STRICT_SSL:-1}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: office_assistance
+    ports:
+      - "5432:5432"
+    volumes:
+      - office_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d office_assistance"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: *dev_build
+    image: office-assistance-dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/office_assistance
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      UPLOAD_DIR: /app/data/uploads
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-26214400}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
+      PORT: "4000"
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-200}
+      M365_TENANT_ID: ${M365_TENANT_ID:-}
+      M365_CLIENT_ID: ${M365_CLIENT_ID:-}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - office_uploads:/app/data/uploads
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/prisma:/app/apps/api/prisma
+      - ./packages/types:/app/packages/types
+    command:
+      - sh
+      - -c
+      - |
+        npm run prisma:migrate -w @office/api && \
+        npm run prisma:generate -w @office/api && \
+        npm run db:seed -w @office/api && \
+        npm run dev -w @office/api
+
+  web:
+    build: *dev_build
+    image: office-assistance-dev
+    environment:
+      DOCKER_API_URL: http://api:4000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages/types:/app/packages/types
+    command: npm run dev -w @office/web -- --host 0.0.0.0
+
+volumes:
+  office_pg_data:
+  office_uploads:
