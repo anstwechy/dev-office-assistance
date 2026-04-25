@@ -1,0 +1,514 @@
+generator client {
+
+  provider = "prisma-client-js"
+
+}
+
+
+
+datasource db {
+
+  provider = "postgresql"
+
+  url      = env("DATABASE_URL")
+
+}
+
+
+
+/// Microsoft Entra app (SPA) IDs for MSAL: optional until set in the UI or via server env.
+
+model M365AppSettings {
+
+  id        String  @id @default("default")
+
+  tenantId  String?
+
+  clientId  String?
+
+  updatedAt DateTime @updatedAt
+
+}
+
+
+
+enum TriageCategory {
+
+  blocker
+
+  risk
+
+  quality
+
+  process
+
+  other
+
+}
+
+
+
+enum TriageStatus {
+
+  inbox
+
+  in_progress
+
+  snoozed
+
+  done
+
+  dropped
+
+}
+
+
+
+enum SourceType {
+
+  outlook
+
+  manual
+
+  microsoft_todo
+
+}
+
+
+
+/// People who can sign in (you + assistance). Roster for triage/teams is `Developer`.
+
+model User {
+
+  id           String   @id @default(uuid())
+
+  email        String   @unique
+
+  passwordHash String
+
+  displayName  String?
+
+  role         String   @default("member")
+
+  /// Future: email when assigned triage (requires SMTP or Graph mail).
+  notifyEmailTriage   Boolean  @default(false) @map("notify_email_triage")
+
+  /// Future: weekly digest email (not wired in v1).
+  notifyEmailDigest   Boolean  @default(false) @map("notify_email_digest")
+
+  createdAt    DateTime @default(now())
+
+  updatedAt    DateTime @updatedAt
+
+
+
+  createdItems  TriageItem[]       @relation("CreatedBy")
+
+  attachments   TriageAttachment[]
+
+  expenses      Expense[]
+
+  planningItems PlanningItem[]
+
+  standupCheckIns StandupCheckIn[]
+
+  authoredDecisions TeamDecision[]
+
+}
+
+
+
+/// Roster entry: no login. Grouped in teams on Team management; assignable in triage.
+
+model Developer {
+
+  id         String   @id @default(uuid())
+
+  displayName String
+
+  skills     String?  @db.Text
+
+  workEmail     String?  @map("work_email")      @db.VarChar(320)  @unique
+  phone         String?  @map("phone")          @db.VarChar(64)
+  location      String?  @map("location")       @db.VarChar(200)
+  bio           String?  @map("bio")            @db.Text
+  skillDetails  String?  @map("skill_details")  @db.Text
+  achievements  String?  @map("achievements")   @db.Text
+
+  /// HR title from org sheet (e.g. Back-End Manager, Front-End (Web)).
+  jobTitle  String?  @map("job_title")  @db.VarChar(200)
+
+  hireDate  DateTime?  @map("hire_date")  @db.Date
+
+  /// As on HR sheet, e.g. "7 years, 0 months" (optional; hireDate is source of truth when set).
+  tenureLabel  String?  @map("tenure_label")  @db.VarChar(120)
+
+  rosterPosition  RosterPosition  @default(member)  @map("roster_position")
+
+  createdAt  DateTime @default(now())
+
+  updatedAt  DateTime @updatedAt
+
+
+
+  teamMemberships TeamMembership[]
+
+  assignedTriage  TriageItem[]     @relation("TriageAssignee")
+
+}
+
+
+
+model TriageItem {
+
+  id                    String         @id @default(uuid())
+
+  title                 String
+
+  description           String?
+
+  category              TriageCategory
+
+  status                TriageStatus   @default(inbox)
+
+  nextAction            String?
+
+  dueAt                 DateTime?
+
+  snoozedUntil          DateTime?
+
+  assigneeDeveloperId   String
+
+  assignee              Developer      @relation("TriageAssignee", fields: [assigneeDeveloperId], references: [id])
+
+  sourceType            SourceType     @default(manual)
+
+  graphMessageId        String?        @unique
+
+  graphWebLink          String?
+
+  sourcePreview         String?
+
+  /// Microsoft To Do list id (Graph). Set by /api/todo/import; pairs with graphTodoTaskId.
+  graphTodoListId       String?
+
+  /// Microsoft To Do task id. Unique together with graphTodoListId for upsert.
+  graphTodoTaskId       String?
+
+  lastTodoSyncedAt      DateTime?
+
+  /// Bank program or client (optional tag for reporting).
+  program               String?        @db.VarChar(200)
+
+  /// Mark as leadership-visible escalation (priority queue).
+  escalated             Boolean        @default(false)
+
+  createdById           String
+
+  createdBy             User           @relation("CreatedBy", fields: [createdById], references: [id])
+
+  createdAt             DateTime       @default(now())
+
+  updatedAt             DateTime       @updatedAt
+
+  attachments           TriageAttachment[]
+
+  planningLinks         PlanningTriageItem[]
+
+  teamDecisions         TeamDecision[]   @relation("DecisionTriage")
+
+
+
+  @@unique([graphTodoListId, graphTodoTaskId])
+
+  @@index([status, dueAt])
+
+  @@index([assigneeDeveloperId])
+
+  @@index([category])
+
+  @@index([program])
+
+}
+
+
+
+/// Files linked to a triage item (audio, PDF, images, etc.)
+
+model TriageAttachment {
+
+  id           String     @id @default(uuid())
+
+  triageItemId String
+
+  triageItem   TriageItem @relation(fields: [triageItemId], references: [id], onDelete: Cascade)
+
+  originalName String
+
+  mimeType     String
+
+  sizeBytes    Int
+
+  storageKey   String     @unique
+
+  createdById  String
+
+  createdBy    User       @relation(fields: [createdById], references: [id])
+
+  createdAt    DateTime   @default(now())
+
+
+
+  @@index([triageItemId])
+
+}
+
+
+
+/// Department-level spend tracking (receipts optional).
+
+model Expense {
+
+  id            String   @id @default(uuid())
+
+  title         String
+
+  description   String?
+
+  amount        Decimal  @db.Decimal(12, 2)
+
+  currency      String   @default("USD")
+
+  department    String
+
+  category      String
+
+  expenseDate   DateTime
+
+  receiptKey    String?
+
+  receiptName   String?
+
+  createdById   String
+
+  createdBy     User     @relation(fields: [createdById], references: [id])
+
+  createdAt     DateTime @default(now())
+
+  updatedAt     DateTime @updatedAt
+
+
+
+  @@index([department])
+
+  @@index([expenseDate])
+
+}
+
+
+
+enum PlanningStatus {
+
+  draft
+
+  active
+
+  done
+
+  cancelled
+
+}
+
+
+
+/// Director vs assistant (org chart); all others are `member` with optional per-team lead role.
+
+enum RosterPosition {
+
+  member
+
+  department_head
+
+  department_assistant
+
+}
+
+
+
+/// Engineering teams for roster / team management.
+
+enum DevTeam {
+
+  backend
+
+  qa
+
+  frontend_web
+
+  frontend_mobile
+
+}
+
+
+
+/// Roadmap / planning items (initiatives, milestones) per dev area.
+
+model PlanningItem {
+
+  id            String         @id @default(uuid())
+
+  title         String
+
+  description   String?
+
+  department    String?
+
+  targetDate    DateTime?
+
+  /// Bank program or client (optional tag).
+  program       String?        @db.VarChar(200)
+
+  status        PlanningStatus @default(draft)
+
+  createdById   String
+
+  createdBy     User           @relation(fields: [createdById], references: [id])
+
+  createdAt     DateTime       @default(now())
+
+  updatedAt     DateTime       @updatedAt
+
+  triageLinks   PlanningTriageItem[]
+
+  teamDecisions TeamDecision[]   @relation("DecisionPlanning")
+
+
+
+  @@index([status])
+
+  @@index([targetDate])
+
+}
+
+
+
+/// Developer membership in a dev team (one row per person per team).
+
+model TeamMembership {
+
+  id          String    @id @default(uuid())
+
+  developerId String
+
+  developer   Developer @relation(fields: [developerId], references: [id], onDelete: Cascade)
+
+  team        DevTeam
+
+  /// That team’s manager/leader in the org sheet.
+  isTeamLead  Boolean  @default(false)  @map("is_team_lead")
+
+  createdAt   DateTime  @default(now())
+
+
+
+  @@unique([developerId, team])
+
+  @@index([team])
+
+  @@index([developerId])
+
+}
+
+
+
+/// Many-to-many: initiative ↔ related triage work items.
+model PlanningTriageItem {
+
+  planningItemId String
+
+  triageItemId   String
+
+  planningItem   PlanningItem @relation(fields: [planningItemId], references: [id], onDelete: Cascade)
+
+  triageItem     TriageItem   @relation(fields: [triageItemId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
+
+
+
+  @@id([planningItemId, triageItemId])
+
+  @@index([triageItemId])
+
+}
+
+
+
+/// Cadence: what shipped last period, what is next, blockers (two signed-in users).
+model StandupCheckIn {
+
+  id         String   @id @default(uuid())
+
+  userId     String
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Monday (UTC) of the week; one row per user per week.
+  weekStart  DateTime @db.Date
+
+  priorWork  String   @default("") @db.Text
+
+  nextWork   String   @default("") @db.Text
+
+  blockers   String   @default("") @db.Text
+
+  createdAt  DateTime @default(now())
+
+  updatedAt  DateTime @updatedAt
+
+
+
+  @@unique([userId, weekStart])
+
+  @@index([weekStart])
+
+}
+
+
+
+/// Lightweight decision log (ADRs) with optional triage or planning links.
+model TeamDecision {
+
+  id     String @id @default(uuid())
+
+  title  String @db.VarChar(500)
+
+  body   String @db.Text
+
+  decidedOn DateTime @db.Date
+
+  createdById String
+
+  createdBy  User  @relation(fields: [createdById], references: [id])
+
+  relatedTriageItemId   String?
+
+  relatedTriageItem     TriageItem?   @relation("DecisionTriage", fields: [relatedTriageItemId], references: [id], onDelete: SetNull)
+
+  relatedPlanningItemId String?
+
+  relatedPlanningItem   PlanningItem? @relation("DecisionPlanning", fields: [relatedPlanningItemId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime @default(now())
+
+  updatedAt  DateTime @updatedAt
+
+
+
+  @@index([decidedOn])
+
+  @@index([createdById])
+
+}
+
+

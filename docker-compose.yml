@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: office_assistance
+    ports:
+      - "5432:5432"
+    volumes:
+      - office_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d office_assistance"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        NPM_STRICT_SSL: ${NPM_STRICT_SSL:-1}
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/office_assistance
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      UPLOAD_DIR: /app/data/uploads
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-26214400}
+      # Allow browser origins for static UI (nginx on 8080) and local Vite (5173).
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
+      PORT: "4000"
+      NODE_ENV: production
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-200}
+      M365_TENANT_ID: ${M365_TENANT_ID:-}
+      M365_CLIENT_ID: ${M365_CLIENT_ID:-}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - office_uploads:/app/data/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NPM_STRICT_SSL: ${NPM_STRICT_SSL:-1}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:4000}
+        # M365 app IDs: configure via API (DB or M365_TENANT_ID / M365_CLIENT_ID for `api` service), not the web build.
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  office_pg_data:
+  office_uploads:

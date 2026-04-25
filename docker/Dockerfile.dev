@@ -1,0 +1,33 @@
+# Dev image: workspace deps + Prisma client. Source is mostly bind-mounted in docker-compose.dev.yml
+# for tsx watch / Vite HMR; rebuild the image when package.json or lockfile changes.
+FROM node:22-alpine
+
+RUN apk add --no-cache openssl libc6-compat
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/types/package.json ./packages/types/
+COPY docker/ ./docker/
+
+ARG NPM_STRICT_SSL=1
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f ./docker/corporate-ca.pem ]; then export NODE_EXTRA_CA_CERTS=/app/docker/corporate-ca.pem; fi; \
+    if [ "$NPM_STRICT_SSL" = "0" ]; then export NPM_CONFIG_STRICT_SSL=false; fi; \
+    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+COPY packages/types ./packages/types
+COPY apps/api ./apps/api
+COPY apps/web ./apps/web
+
+RUN if [ -f ./docker/corporate-ca.pem ]; then export NODE_EXTRA_CA_CERTS=/app/docker/corporate-ca.pem; fi; \
+    if [ "$NPM_STRICT_SSL" = "0" ]; then export NODE_TLS_REJECT_UNAUTHORIZED=0; fi; \
+    npm run build -w @office/types && \
+    npm run prisma:generate -w @office/api
+
+WORKDIR /app
+ENV NODE_ENV=development
+
+EXPOSE 4000 5173

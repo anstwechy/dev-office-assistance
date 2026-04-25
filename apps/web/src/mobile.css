@@ -1,0 +1,105 @@
+/* Mobile-first: safe areas, legible type, 44px-ish targets, no iOS input zoom. */
+
+html {
+  /* Better mobile viewport: notches, home indicator, dynamic toolbar */
+  height: 100%;
+}
+
+/* AppShell.Main provides horizontal padding; we only add safe-area insets to avoid notches / home indicator. */
+.app-main-pad {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-top: max(0px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 48em) {
+  .app-main-pad {
+    /* Desktop: let Mantine padding handle sides; only adjust for notched displays */
+    padding-top: max(0px, env(safe-area-inset-top, 0px));
+  }
+}
+
+#root,
+.app-shell {
+  min-height: 100dvh;
+  min-height: 100svh;
+  min-width: 0;
+}
+
+/* Avoid horizontal bleed on very narrow viewports */
+.app-page,
+.app-main-pad,
+.app-layout-main-inner {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Titles: scale down slightly on very small screens; keep tap-friendly body text */
+.page-title,
+h1.page-title {
+  font-size: clamp(1.4rem, 4.2vw, 1.65rem);
+  line-height: 1.2;
+  word-wrap: break-word;
+}
+
+h1,
+h2 {
+  word-wrap: break-word;
+}
+
+/* Cards / panels: tighter padding on phones */
+@media (max-width: 36em) {
+  .card,
+  .panel {
+    padding: 1rem 1.05rem;
+  }
+
+  .data-table-wrap {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* iOS: 16px+ on focused inputs avoids automatic zoom (keep design consistent) */
+@media (max-width: 36em) {
+  input,
+  select,
+  textarea {
+    font-size: 1rem !important;
+  }
+}
+
+/* Touch: faster taps, gentle highlight */
+button,
+[role="button"],
+a,
+.btn,
+input[type="file"] {
+  touch-action: manipulation;
+}
+
+a.app-nav-brand,
+.mantine-NavLink-root {
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* PWA standalone: use full screen; safe insets still applied via .app-main-pad */
+@media (display-mode: standalone) {
+  html {
+    /* Prevent rubber-band from showing under status bar in some iOS versions */
+    background-color: var(--color-canvas, #f5f4f2);
+  }
+}
+
+/* Centered sign-in: respect notches and safe insets */
+.app-shell--auth {
+  padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px)) max(1.25rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px)) !important;
+  box-sizing: border-box;
+}
