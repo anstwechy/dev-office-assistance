@@ -1,9 +1,20 @@
 import type { FastifyInstance } from "fastify";
-import type { DevTeam, PlanningStatus } from "@prisma/client";
+import type { DevTeam, PlanningStatus, TriageStatus } from "@prisma/client";
 import { prisma } from "../db.js";
 import { requireDbUser } from "../userService.js";
 
 const ALL_PLANNING: PlanningStatus[] = ["draft", "active", "done", "cancelled"];
+
+/** Prisma's `notIn` expects a mutable `TriageStatus[]`, not a readonly tuple from `as const`. */
+const CLOSED_TRIAGE: TriageStatus[] = ["done", "dropped"];
+
+function prismaGroupCountAll(row: { _count?: true | { _all?: number } }): number {
+  const c = row._count;
+  if (c && typeof c === "object" && "_all" in c) {
+    return Number((c as { _all: number })._all) || 0;
+  }
+  return 0;
+}
 
 function startEndOfCurrentMonth() {
   const now = new Date();
@@ -27,9 +38,9 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
 
     const expenseWhere = { expenseDate: { gte: from, lte: to } } as const;
 
-    const openWhere = { status: { notIn: ["done", "dropped"] as const } } as const;
+    const openWhere = { status: { notIn: CLOSED_TRIAGE } };
 
-    const [byCurrencyRows, monthEntryCount, receiptCount, planGroups, teamGroups, teamUserRows, openBlockerRisk, escalatedOpen, devs, triageByAssignee] =
+    const [byCurrencyRows, monthEntryCount, receiptCount, planGroups, teamGroups, teamUserRows, openBlockerRisk, escalatedOpen] =
       await Promise.all([
         prisma.expense.groupBy({
           by: ["currency"],
@@ -61,15 +72,6 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
         prisma.triageItem.count({
           where: { ...openWhere, escalated: true },
         }),
-        prisma.developer.findMany({
-          select: { id: true, displayName: true },
-          orderBy: { displayName: "asc" },
-        }),
-        prisma.triageItem.groupBy({
-          by: ["assigneeDeveloperId", "status"],
-          where: openWhere,
-          _count: { _all: true },
-        }),
       ]);
 
     const byCurrency = byCurrencyRows
@@ -86,7 +88,7 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
       cancelled: 0,
     };
     for (const g of planGroups) {
-      byStatus[g.status] = g._count._all;
+      byStatus[g.status] = prismaGroupCountAll(g);
     }
     const planningTotal = ALL_PLANNING.reduce((acc, s) => acc + byStatus[s], 0);
 
@@ -97,35 +99,10 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
       frontend_mobile: 0,
     };
     for (const g of teamGroups) {
-      byTeam[g.team] = g._count._all;
+      byTeam[g.team] = prismaGroupCountAll(g);
     }
-    const totalMemberships = teamGroups.reduce((acc, g) => acc + g._count._all, 0);
+    const totalMemberships = teamGroups.reduce((acc, g) => acc + prismaGroupCountAll(g), 0);
     const uniqueDevelopers = new Set(teamUserRows.map((r) => r.developerId)).size;
-
-    const byDev = new Map<string, { open: number; inProgress: number }>();
-    for (const d of devs) {
-      byDev.set(d.id, { open: 0, inProgress: 0 });
-    }
-    for (const row of triageByAssignee) {
-      const cur = byDev.get(row.assigneeDeveloperId) ?? { open: 0, inProgress: 0 };
-      const n = row._count._all;
-      if (row.status === "in_progress") {
-        cur.inProgress += n;
-      }
-      if (row.status === "inbox" || row.status === "in_progress" || row.status === "snoozed") {
-        cur.open += n;
-      }
-      byDev.set(row.assigneeDeveloperId, cur);
-    }
-    const workloadRows = devs.map((d) => {
-      const c = byDev.get(d.id) ?? { open: 0, inProgress: 0 };
-      return {
-        developerId: d.id,
-        displayName: d.displayName,
-        open: c.open,
-        inProgress: c.inProgress,
-      };
-    });
 
     return {
       periodLabel,
@@ -149,9 +126,6 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
       ops: {
         openBlockerRisk,
         escalatedOpen,
-      },
-      workload: {
-        rows: workloadRows,
       },
     };
   });
