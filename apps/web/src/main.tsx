@@ -13,7 +13,17 @@ import "./theme/theme-color-scopes.css";
 import "./theme/ThemeSwitcher.css";
 import "./mobile.css";
 
-registerSW({ immediate: true });
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true });
+} else if ("serviceWorker" in navigator) {
+  void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map((name) => caches.delete(name)));
+    }
+  });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
