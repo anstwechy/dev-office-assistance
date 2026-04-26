@@ -1,0 +1,12 @@
+.cursor/
+node_modules
+dist
+.env
+.env.local
+apps/*/.env
+*.log
+.DS_Store
+coverage
+.pnpm-store
+docker/corporate-ca.pem
+data/uploads

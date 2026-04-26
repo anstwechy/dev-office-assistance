@@ -1,0 +1,205 @@
+/* Three preset scopes. Default (ember) = red, black, white. Animation tokens follow each palette. */
+:root,
+[data-app-theme="ember"] {
+  --color-canvas: #f5f4f2;
+  --color-surface: #ffffff;
+  --color-ink: #0c0a0a;
+  --color-ink-secondary: #3f3f46;
+  --color-muted: #737373;
+  --color-border: rgba(12, 10, 10, 0.1);
+  --color-border-strong: rgba(12, 10, 10, 0.2);
+
+  --accent: #dc2626;
+  --accent-hover: #f87171;
+  --accent-faint: rgba(220, 38, 38, 0.16);
+  --accent-dark: #991b1b;
+
+  --danger: #b91c1c;
+  --danger-faint: rgba(185, 28, 28, 0.1);
+
+  --theme-anim-a: #dc2626;
+  --theme-anim-b: #450a0a;
+  --theme-anim-c: #fecaca;
+  --theme-mesh-1: rgba(220, 38, 38, 0.11);
+  --theme-mesh-2: rgba(9, 9, 11, 0.05);
+  --theme-ribbon-1: #dc2626;
+  --theme-ribbon-2: #0a0a0a;
+  --theme-ribbon-3: #f87171;
+  --theme-swatch-pulse: rgba(220, 38, 38, 0.35);
+  --theme-swatch-glow: rgba(220, 38, 38, 0.4);
+  --page-enter-glow: rgba(220, 38, 38, 0.08);
+}
+
+[data-app-theme="teal"] {
+  --color-canvas: #f2f0eb;
+  --color-surface: #ffffff;
+  --color-ink: #111318;
+  --color-ink-secondary: #3d4250;
+  --color-muted: #6b7080;
+  --color-border: rgba(17, 19, 24, 0.1);
+  --color-border-strong: rgba(17, 19, 24, 0.16);
+
+  --accent: #0f766e;
+  --accent-hover: #0d9488;
+  --accent-faint: rgba(15, 118, 110, 0.14);
+  --accent-dark: #115e59;
+
+  --danger: #b91c1c;
+  --danger-faint: rgba(185, 28, 28, 0.1);
+
+  --theme-anim-a: #0d9488;
+  --theme-anim-b: #134e4a;
+  --theme-anim-c: #5eead4;
+  --theme-mesh-1: rgba(15, 118, 110, 0.09);
+  --theme-mesh-2: rgba(17, 24, 39, 0.04);
+  --theme-ribbon-1: #0f766e;
+  --theme-ribbon-2: #0f172a;
+  --theme-ribbon-3: #2dd4bf;
+  --theme-swatch-pulse: rgba(13, 148, 136, 0.3);
+  --theme-swatch-glow: rgba(20, 184, 166, 0.35);
+  --page-enter-glow: rgba(15, 118, 110, 0.1);
+}
+
+[data-app-theme="violet"] {
+  --color-canvas: #f4f0ff;
+  --color-surface: #ffffff;
+  --color-ink: #1e1b4b;
+  --color-ink-secondary: #4338ca;
+  --color-muted: #6b7280;
+  --color-border: rgba(67, 56, 202, 0.12);
+  --color-border-strong: rgba(49, 46, 129, 0.2);
+
+  --accent: #6d28d9;
+  --accent-hover: #7c3aed;
+  --accent-faint: rgba(109, 40, 217, 0.14);
+  --accent-dark: #5b21b6;
+
+  --danger: #b91c1c;
+  --danger-faint: rgba(185, 28, 28, 0.1);
+
+  --theme-anim-a: #7c3aed;
+  --theme-anim-b: #1e1b4b;
+  --theme-anim-c: #c4b5fd;
+  --theme-mesh-1: rgba(124, 58, 237, 0.1);
+  --theme-mesh-2: rgba(30, 27, 75, 0.05);
+  --theme-ribbon-1: #6d28d9;
+  --theme-ribbon-2: #312e81;
+  --theme-ribbon-3: #a78bfa;
+  --theme-swatch-pulse: rgba(124, 58, 237, 0.35);
+  --theme-swatch-glow: rgba(167, 139, 250, 0.45);
+  --page-enter-glow: rgba(109, 40, 217, 0.1);
+}
+
+/* Ambient layer + ribbon use theme-scoped colors */
+body {
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -30%, var(--theme-mesh-1), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, var(--theme-mesh-2), transparent 50%);
+  transition: background-color 0.45s ease, color 0.45s ease;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: -15%;
+  z-index: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from 120deg at 50% 50%,
+    var(--theme-mesh-1),
+    transparent 30%,
+    var(--theme-mesh-2),
+    transparent 60%,
+    var(--theme-mesh-1)
+  );
+  opacity: 0.28;
+  animation: app-theme-ambient-rotate 28s linear infinite;
+  mix-blend-mode: soft-light;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+}
+
+@keyframes app-theme-ambient-rotate {
+  from {
+    transform: rotate(0deg) scale(1.05);
+  }
+  to {
+    transform: rotate(360deg) scale(1.05);
+  }
+}
+
+.app-top-bar {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  /* Solid surface so the ribbon / sticky header never “shows through” the page */
+  background: var(--color-canvas);
+  padding-top: 0.15rem;
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.app-top-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--theme-ribbon-1),
+    var(--theme-ribbon-2),
+    var(--theme-ribbon-3),
+    var(--theme-ribbon-1)
+  );
+  background-size: 300% 100%;
+  animation: app-top-ribbon-flow 7s ease-in-out infinite;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 4px var(--page-enter-glow));
+}
+
+.app-top-bar__eyebrow {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  margin: 0;
+}
+
+/* One-time page enter: calmer than a looping glow (better for focus in a work app) */
+.app-layout-main-inner {
+  border-radius: var(--radius, 10px);
+  box-shadow: 0 0 0 0 transparent;
+  animation: page-enter 0.5s ease both;
+}
+
+@keyframes app-top-ribbon-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after {
+    animation: none;
+  }
+  .app-top-bar::after {
+    animation: none;
+  }
+  .app-layout-main-inner {
+    animation: none;
+  }
+}

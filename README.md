@@ -8,7 +8,6 @@ It combines leadership triage, planning, developer/team management, standups, de
 - Core setup and workflows: this README
 - Environment variable reference: [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)
 - API route overview by domain: [`docs/API_OVERVIEW.md`](docs/API_OVERVIEW.md)
-- System preview for developers/stakeholders: [`docs/SYSTEM_PREVIEW.md`](docs/SYSTEM_PREVIEW.md)
 
 ## Current scope
 
@@ -200,4 +199,3 @@ Other frequent issues:
 - `AUTH_JWT_SECRET must be at least 32 characters`: update root `.env`.
 - Web loads but sign-in fails after deployment: verify API reachability, `VITE_API_BASE_URL`, and API CORS.
 - Microsoft pages fail with Graph permission errors: confirm delegated scopes and sign in again in Apps.
-
