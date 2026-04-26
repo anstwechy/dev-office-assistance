@@ -40,7 +40,17 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
 
     const openWhere = { status: { notIn: CLOSED_TRIAGE } };
 
-    const [byCurrencyRows, monthEntryCount, receiptCount, planGroups, teamGroups, teamUserRows, openBlockerRisk, escalatedOpen] =
+    const [
+      byCurrencyRows,
+      monthEntryCount,
+      receiptCount,
+      planGroups,
+      teamGroups,
+      teamUserRows,
+      openBlockerRisk,
+      escalatedOpen,
+      workloadGroups,
+    ] =
       await Promise.all([
         prisma.expense.groupBy({
           by: ["currency"],
@@ -71,6 +81,11 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
         }),
         prisma.triageItem.count({
           where: { ...openWhere, escalated: true },
+        }),
+        prisma.triageItem.groupBy({
+          by: ["assigneeDeveloperId", "status"],
+          where: { status: { in: ["inbox", "in_progress"] } },
+          _count: { _all: true },
         }),
       ]);
 
@@ -104,7 +119,34 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
     const totalMemberships = teamGroups.reduce((acc, g) => acc + prismaGroupCountAll(g), 0);
     const uniqueDevelopers = new Set(teamUserRows.map((r) => r.developerId)).size;
 
-    return {
+    const developerIds = Array.from(new Set(workloadGroups.map((g) => g.assigneeDeveloperId)));
+    const workloadDevelopers = developerIds.length
+      ? await prisma.developer.findMany({
+          where: { id: { in: developerIds } },
+          select: { id: true, displayName: true },
+        })
+      : [];
+    const developerNames = new Map(workloadDevelopers.map((d) => [d.id, d.displayName]));
+    const workloadByDeveloper = new Map<string, { developerId: string; displayName: string; open: number; inProgress: number }>();
+    for (const g of workloadGroups) {
+      const row = workloadByDeveloper.get(g.assigneeDeveloperId) ?? {
+        developerId: g.assigneeDeveloperId,
+        displayName: developerNames.get(g.assigneeDeveloperId) ?? "Unknown assignee",
+        open: 0,
+        inProgress: 0,
+      };
+      if (g.status === "inbox") {
+        row.open = prismaGroupCountAll(g);
+      } else if (g.status === "in_progress") {
+        row.inProgress = prismaGroupCountAll(g);
+      }
+      workloadByDeveloper.set(g.assigneeDeveloperId, row);
+    }
+    const workloadRows = Array.from(workloadByDeveloper.values()).sort(
+      (a, b) => b.open + b.inProgress - (a.open + a.inProgress) || a.displayName.localeCompare(b.displayName),
+    );
+
+    const response = {
       periodLabel,
       monthRange: { from: from.toISOString(), to: to.toISOString() },
       expenses: {
@@ -127,6 +169,10 @@ export async function registerDashboardOverviewRoutes(app: FastifyInstance) {
         openBlockerRisk,
         escalatedOpen,
       },
+      workload: {
+        rows: workloadRows,
+      },
     };
+    return response;
   });
 }
